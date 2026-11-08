@@ -48,7 +48,7 @@ public class MainActivity extends Activity {
         root.addView(fpsSpinner);
 
         addLabel(root, "RESOLUTION");
-        resolutionSpinner = spinner(new String[]{"100% (native)","75%","50%"});
+        resolutionSpinner = spinner(new String[]{"Native resolution","720p output (scaled)","6K upscale (experimental; no added detail)"});
         root.addView(resolutionSpinner);
 
         addLabel(root, "VIDEO BITRATE");
@@ -56,7 +56,7 @@ public class MainActivity extends Activity {
         root.addView(qualitySpinner);
 
         TextView note = new TextView(this);
-        note.setText("\n500 FPS is a requested target, not a guarantee. Android screen capture is limited by the display refresh rate and the hardware encoder. The app detects those limits and selects the highest usable rate. Lower FPS throttles the recording and may look choppier; it does not change game speed or create true slow motion. For smoother gameplay while recording, lower resolution/bitrate. This app does not alter recoil or game behavior.");
+        note.setText("\n500 FPS is a requested target, not a guarantee. Android screen capture is limited by the display refresh rate and the hardware encoder. The app caps the requested rate to the display refresh and encoder capability. 500 FPS touch sampling cannot be enabled by an ordinary app: the touchscreen controller and Android input driver determine touch sampling. Android also does not let this recorder change swipe DPI or game input latency. 720p scales the captured image down. 6K is an upscale from your screen (no extra detail) and may be rejected by the encoder. A screen recorder cannot record touch events alone as a video; Android screen capture records pixels. No setting can guarantee zero lag or zero crashes on every device.");
         note.setTextColor(0xffd2dbe4);
         note.setTextSize(13);
         root.addView(note);
