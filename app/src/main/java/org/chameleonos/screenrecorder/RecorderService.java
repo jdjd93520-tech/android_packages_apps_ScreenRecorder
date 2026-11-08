@@ -30,7 +30,8 @@ public class RecorderService extends Service {
     private MediaProjection projection;
     private VirtualDisplay virtualDisplay;
     private MediaRecorder recorder;
-    private boolean recording;\n    private MediaProjection.Callback projectionCallback;
+    private boolean recording;
+    private MediaProjection.Callback projectionCallback;
 
     @Override public void onCreate() {
         super.onCreate();
@@ -119,7 +120,11 @@ public class RecorderService extends Service {
             recording = false;
         }
         if (virtualDisplay != null) { virtualDisplay.release(); virtualDisplay = null; }
-        if (projection != null) {\n            try { if (projectionCallback != null) projection.unregisterCallback(projectionCallback); } catch (Exception ignored) { }\n            try { projection.stop(); } catch (Exception ignored) { }\n            projection = null; projectionCallback = null;\n        }
+        if (projection != null) {
+            try { if (projectionCallback != null) projection.unregisterCallback(projectionCallback); } catch (Exception ignored) { }
+            try { projection.stop(); } catch (Exception ignored) { }
+            projection = null; projectionCallback = null;
+        }
         stopForeground(true);
         stopSelf();
     }
