@@ -1,4 +1,4 @@
-name: Build Screen Recorder APK
+name: Build and smoke-test Screen Recorder APK
 on:
   push:
     branches: [kitkat]
@@ -34,3 +34,49 @@ jobs:
           name: ScreenRecorder-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
+
+  emulator-smoke-test:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: ScreenRecorder-debug-apk
+          path: artifacts
+      - name: Install and start a real MediaProjection recording on Android 15 emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_2
+          script: |
+            set -euo pipefail
+            PKG=org.chameleonos.screenrecorder
+            adb install -r artifacts/app-debug.apk
+            adb shell am force-stop "$PKG"
+            adb shell am start -n "$PKG/.MainActivity"
+            sleep 3
+            adb shell input swipe 540 1650 540 550 500
+            sleep 1
+            adb shell uiautomator dump /sdcard/window.xml >/dev/null
+            UI="$(adb shell cat /sdcard/window.xml | tr -d '\r')"
+            START_BOUNDS="$(python3 -c 'import re,sys; x=sys.stdin.read(); m=re.search(r'text="START RECORDING".*?bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"',x); print(",".join(str((int(m.group(i))+int(m.group(i+2)))//2) for i in (1,2)) if m else "")' <<< "$UI")"
+            test -n "$START_BOUNDS"
+            adb shell input tap "${START_BOUNDS%,*}" "${START_BOUNDS#*,}"
+            sleep 3
+            adb shell uiautomator dump /sdcard/window.xml >/dev/null
+            UI="$(adb shell cat /sdcard/window.xml | tr -d '\r')"
+            ENTIRE_BOUNDS="$(python3 -c 'import re,sys; x=sys.stdin.read(); m=re.search(r'text="(?:Entire screen|Share entire screen)".*?bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"',x,re.I); print(",".join(str((int(m.group(i))+int(m.group(i+2)))//2) for i in (1,2)) if m else "")' <<< "$UI")"
+            if [ -n "$ENTIRE_BOUNDS" ]; then adb shell input tap "${ENTIRE_BOUNDS%,*}" "${ENTIRE_BOUNDS#*,}"; sleep 2; fi
+            adb shell uiautomator dump /sdcard/window.xml >/dev/null
+            UI="$(adb shell cat /sdcard/window.xml | tr -d '\r')"
+            SHARE_BOUNDS="$(python3 -c 'import re,sys; x=sys.stdin.read(); m=re.search(r'text="(?:Start now|Start sharing|Share)".*?bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"',x,re.I); print(",".join(str((int(m.group(i))+int(m.group(i+2)))//2) for i in (1,2)) if m else "")' <<< "$UI")"
+            if [ -n "$SHARE_BOUNDS" ]; then adb shell input tap "${SHARE_BOUNDS%,*}" "${SHARE_BOUNDS#*,}"; fi
+            sleep 8
+            adb shell dumpsys activity services "$PKG" | grep -q "RecorderService"
+            adb shell am startservice -n "$PKG/.RecorderService" -a org.chameleonos.screenrecorder.STOP
+            sleep 2
+            adb shell "find /sdcard/Android/data/$PKG/files/Movies/ScreenRecorder -name '*.mp4' -type f -size +0c | grep -q ."
