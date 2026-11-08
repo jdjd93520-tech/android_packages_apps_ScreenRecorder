@@ -232,6 +232,7 @@ public class RecorderService extends Service {
         if (cleaning) return;
         cleaning = true;
         boolean hadRecording = recording;
+        boolean hadRecorder = recorder != null;
         recording = false;
         if (recorder != null) {
             try {
@@ -247,7 +248,7 @@ public class RecorderService extends Service {
             try { virtualDisplay.release(); } catch (Exception ignored) { }
             virtualDisplay = null;
         }
-        if (!hadRecording && outputFile != null && outputFile.exists()) {
+        if (!hadRecording && hadRecorder && outputFile != null && outputFile.exists()) {
             try { outputFile.delete(); } catch (Exception ignored) { }
         }
         if (projection != null) {
