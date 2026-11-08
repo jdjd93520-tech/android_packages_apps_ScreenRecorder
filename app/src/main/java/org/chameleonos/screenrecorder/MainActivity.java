@@ -91,8 +91,7 @@ public class MainActivity extends Activity {
             Intent i = new Intent(this, RecorderService.class);
             i.setAction(RecorderService.ACTION_STOP);
             try {
-                if (Build.VERSION.SDK_INT >= 26) startForegroundService(i);
-                else startService(i);
+                startService(i);
                 status.setText("Stop requested.");
             } catch (Exception e) { status.setText("Could not stop recorder: " + e.getMessage()); }
         });
