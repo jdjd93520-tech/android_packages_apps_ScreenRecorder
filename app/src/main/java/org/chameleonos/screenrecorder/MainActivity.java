@@ -11,7 +11,7 @@ import android.graphics.Typeface;
 
 public class MainActivity extends Activity {
     private static final int REQUEST_CAPTURE = 900;
-    private Spinner fpsSpinner, resolutionSpinner, qualitySpinner;
+    private Spinner fpsSpinner, resolutionSpinner, qualitySpinner, aspectSpinner;
     private TextView status;
     private MediaProjectionManager projectionManager;
 
@@ -52,8 +52,12 @@ public class MainActivity extends Activity {
         root.addView(resolutionSpinner);
 
         addLabel(root, "VIDEO BITRATE");
-        qualitySpinner = spinner(new String[]{"12 Mbps (high)","8 Mbps (balanced)","4 Mbps (lighter load)","2 Mbps (lowest load)"});
+        qualitySpinner = spinner(new String[]{"12 Mbps (high detail)","8 Mbps (balanced)","4 Mbps (lower load)","2 Mbps (lowest load)"});
         root.addView(qualitySpinner);
+
+        addLabel(root, "OUTPUT SHAPE / STRETCH");
+        aspectSpinner = spinner(new String[]{"Original aspect ratio","Stretch 16:9 landscape","Stretch 4:3 landscape","Stretch 20:9 portrait","Stretch 9:16 portrait","Stretch 1:1 square"});
+        root.addView(aspectSpinner);
 
         TextView note = new TextView(this);
         note.setText("\n500 FPS is a requested target, not a guarantee. Android screen capture is limited by the display refresh rate and the hardware encoder. The app caps the requested rate to the display refresh and encoder capability. 500 FPS touch sampling cannot be enabled by an ordinary app: the touchscreen controller and Android input driver determine touch sampling. Android also does not let this recorder change swipe DPI or game input latency. 720p scales the captured image down. 6K is an upscale from your screen (no extra detail) and may be rejected by the encoder. A screen recorder cannot record touch events alone as a video; Android screen capture records pixels. No setting can guarantee zero lag or zero crashes on every device.");
@@ -117,8 +121,9 @@ public class MainActivity extends Activity {
         }
         int[] rates = {30,60,120,240,500};
         int fps = rates[fpsSpinner.getSelectedItemPosition()];
-        int[] scales = {100,75,50};
+        int[] scales = {100,720,6000};
         int scale = scales[resolutionSpinner.getSelectedItemPosition()];
+        int aspect = aspectSpinner.getSelectedItemPosition();
         int[] bitrates = {12000000,8000000,4000000,2000000};
         int bitrate = bitrates[qualitySpinner.getSelectedItemPosition()];
         Intent service = new Intent(this, RecorderService.class);
@@ -128,6 +133,7 @@ public class MainActivity extends Activity {
         service.putExtra(RecorderService.EXTRA_FPS, fps);
         service.putExtra(RecorderService.EXTRA_SCALE, scale);
         service.putExtra(RecorderService.EXTRA_BITRATE, bitrate);
+        service.putExtra(RecorderService.EXTRA_ASPECT, aspect);
         try {
             if (android.os.Build.VERSION.SDK_INT >= 26) startForegroundService(service);
             else startService(service);
