@@ -54,6 +54,7 @@ public class RecorderService extends Service {
         if (!ACTION_START.equals(intent.getAction())) return START_NOT_STICKY;
 
         try {
+            if (recording || projection != null) stopRecording(false);
             startAsForeground();
             int resultCode = intent.getIntExtra(EXTRA_RESULT_CODE, Activity.RESULT_CANCELED);
             Intent data = getProjectionData(intent);
@@ -245,6 +246,9 @@ public class RecorderService extends Service {
         if (virtualDisplay != null) {
             try { virtualDisplay.release(); } catch (Exception ignored) { }
             virtualDisplay = null;
+        }
+        if (!hadRecording && outputFile != null && outputFile.exists()) {
+            try { outputFile.delete(); } catch (Exception ignored) { }
         }
         if (projection != null) {
             try {
