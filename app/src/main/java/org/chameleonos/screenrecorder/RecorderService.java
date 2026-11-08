@@ -26,6 +26,7 @@ public class RecorderService extends Service {
     public static final String EXTRA_FPS = "fps";
     public static final String EXTRA_SCALE = "scale";
     public static final String EXTRA_BITRATE = "bitrate";
+    public static final String EXTRA_ASPECT = "aspect";
     private static final int NOTIFICATION_ID = 41;
     private MediaProjection projection;
     private VirtualDisplay virtualDisplay;
@@ -50,7 +51,8 @@ public class RecorderService extends Service {
             int requestedFps = intent.getIntExtra(EXTRA_FPS, 60);
             int scale = intent.getIntExtra(EXTRA_SCALE, 100);
             int bitrate = intent.getIntExtra(EXTRA_BITRATE, 8000000);
-            startCapture(resultCode, data, requestedFps, scale, bitrate);
+            int aspect = intent.getIntExtra(EXTRA_ASPECT, 0);
+            startCapture(resultCode, data, requestedFps, scale, bitrate, aspect);
         } catch (Exception e) {
             updateNotification("Recorder error: " + e.getMessage());
             stopRecording();
@@ -58,12 +60,41 @@ public class RecorderService extends Service {
         return START_NOT_STICKY;
     }
 
-    private void startCapture(int resultCode, Intent data, int requestedFps, int scale, int bitrate) throws Exception {
+    private void startCapture(int resultCode, Intent data, int requestedFps, int scale, int bitrate, int aspect) throws Exception {
         WindowManager wm = (WindowManager)getSystemService(WINDOW_SERVICE);
         DisplayMetrics dm = new DisplayMetrics();
         wm.getDefaultDisplay().getRealMetrics(dm);
-        int width = Math.max(2, (dm.widthPixels * scale / 100) & ~1);
-        int height = Math.max(2, (dm.heightPixels * scale / 100) & ~1);
+        int width;
+        int height;
+        if (scale == 720 || scale == 6000) {
+            int longEdge = scale == 720 ? 1280 : 6144;
+            float factor = (float) longEdge / Math.max(dm.widthPixels, dm.heightPixels);
+            width = Math.max(2, ((int) (dm.widthPixels * factor)) & ~1);
+            height = Math.max(2, ((int) (dm.heightPixels * factor)) & ~1);
+        } else {
+            width = Math.max(2, dm.widthPixels & ~1);
+            height = Math.max(2, dm.heightPixels & ~1);
+        }
+        // Output-shape presets alter the encoded canvas; device behavior may vary.
+        if (aspect > 0) {
+            float ratio;
+            switch (aspect) {
+                case 1: ratio = 16f / 9f; break;
+                case 2: ratio = 4f / 3f; break;
+                case 3: ratio = 20f / 9f; break;
+                case 4: ratio = 9f / 16f; break;
+                case 5: ratio = 1f; break;
+                default: ratio = (float) width / height;
+            }
+            int longEdge = Math.max(width, height);
+            if (ratio >= 1f) {
+                width = longEdge & ~1;
+                height = Math.max(2, ((int) (longEdge / ratio)) & ~1);
+            } else {
+                height = longEdge & ~1;
+                width = Math.max(2, ((int) (longEdge * ratio)) & ~1);
+            }
+        }
         int displayRate = Math.max(1, Math.round(wm.getDefaultDisplay().getRefreshRate()));
         int encoderRate = maxEncoderFps();
         int actualFps = Math.max(1, Math.min(requestedFps, Math.min(displayRate, encoderRate)));
